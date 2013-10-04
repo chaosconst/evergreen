@@ -61,18 +61,18 @@ def nlp_prepare(dataset):
     test_set_size = 369;
     predict_set_size = 2800;
 
-    debug = "false";
+    debug = "true";
     if debug == "true":
-      train_set_size = 3600;
-      valid_set_size = 500;
+      train_set_size = 1000;
+      valid_set_size = 200;
       test_set_size = 100;
-      predict_set_size = 2800;
+      predict_set_size = 100;
 
         
     words_in_doc = {};
 
     #load data from kaggle test set
-    #step1: count word
+    #step1: count word, build word list
     with open('../data/train.tsv', 'rb') as csvfile:
       datareader = csv.reader(csvfile, delimiter='	', quotechar='"')
       for index,row in enumerate(datareader):
@@ -89,58 +89,61 @@ def nlp_prepare(dataset):
           for word in re.findall(r'\w+', row[i]):
             words_in_doc[word]= words_in_doc.get(word,0) + 1;
 
-#    top_word = sorted(words_in_doc.items(), key=lambda x: x[1], reverse=1);
-    top_word_list = [word for word in words_in_doc if words_in_doc[word]>1];
-    print top_word_list;
-    print len(top_word_list);
+    #make sure word appearency is more than once.
+    top_word_list = [word for word in words_in_doc if words_in_doc[word]>10];
+
+    word_feature_size = len(top_word_list)*3;
+    float_feature_size = 26;
+    feature_size = word_feature_size + float_feature_size;
 
     train_set = [
-        numpy.ndarray(shape=(train_set_size,28*28), dtype=theano.config.floatX),
+        numpy.ndarray(shape=(train_set_size, feature_size), dtype=theano.config.floatX),
         numpy.ndarray(shape=(train_set_size), dtype=int)];
 
-    valid_set.append(numpy.ndarray(shape=(valid_set_size,28*28), dtype=theano.config.floatX));
+    valid_set.append(numpy.ndarray(shape=(valid_set_size, feature_size), dtype=theano.config.floatX));
     valid_set.append(numpy.ndarray(shape=(valid_set_size), dtype=int));
-    test_set.append(numpy.ndarray(shape=(test_set_size,28*28), dtype=theano.config.floatX));
+    test_set.append(numpy.ndarray(shape=(test_set_size, feature_size), dtype=theano.config.floatX));
     test_set.append(numpy.ndarray(shape=(test_set_size), dtype=int));
-    predict_set.append(numpy.ndarray(shape=(predict_set_size,28*28), dtype=theano.config.floatX));
+    predict_set.append(numpy.ndarray(shape=(predict_set_size, feature_size), dtype=theano.config.floatX));
     predict_set.append(numpy.ndarray(shape=(predict_set_size), dtype=int));
+
+    def build_feature(row, top_word_list):
+      res = [i for i in xrange(feature_size)];
+      return res;
 
     #load data from kaggle test set
     with open('../data/train.tsv', 'rb') as csvfile:
       datareader = csv.reader(csvfile, delimiter='	', quotechar='"')
       for index,row in enumerate(datareader):
+        if index == train_set_size + valid_set_size + test_set_size : 
+          break; 
         if index<train_set_size : 
+          #make label
           train_set[1][index] = string.atoi(row[len(row)-1]);
+          #feature extractor
+          train_set[0][index] = build_feature(row, top_word_list);
+        elif index < train_set_size + valid_set_size :
+          #make label
+          valid_set[1][index-train_set_size] = string.atoi(row[len(row)-1]);
+          #feature extractor
+          valid_set[0][index-train_set_size] = build_feature(row, top_word_list);
+        else :
+          #make label
+          test_set[1][index-train_set_size-valid_set_size] = string.atoi(row[len(row)-1]);
+          #feature extractor
+          test_set[0][index-train_set_size-valid_set_size] = build_feature(row, top_word_list);
 
-#      index=0;
-#      for row in datareader:
-#        if index<train_set_size : 
-#          train_set[1][index] = string.atoi(row[0]);
-#          for pixel_index in xrange(1,28*28+1) : 
-#            train_set[0][index][pixel_index-1] = string.atof(row[pixel_index])/255;
-#        elif index < train_set_size + valid_set_size :
-#          valid_set[1][index-train_set_size] = string.atoi(row[0]);
-#          for pixel_index in xrange(1,28*28+1) : 
-#            valid_set[0][index-train_set_size][pixel_index-1] = string.atof(row[pixel_index])/255;
-#        else :
-#          test_set[1][index-train_set_size-valid_set_size] = string.atoi(row[0]);
-#          for pixel_index in xrange(1,28*28+1) : 
-#            test_set[0][index-train_set_size-valid_set_size][pixel_index-1] = string.atof(row[pixel_index])/255;
-#        index+=1;
-#        if index == train_set_size + valid_set_size + test_set_size : 
-#          break; 
-    
+
     print '... loading predict dataset'
     #load data from kaggle test set
-    with open('../data/test.csv', 'rb') as csvfile:
-      datareader = csv.reader(csvfile, delimiter=',')
-#      index=0;
-#      for row in datareader:
-#        for pixel_index in xrange(0,28*28) : 
-#          predict_set[0][index][pixel_index] = string.atof(row[pixel_index])/255;
-#        index+=1;
-#        if index == predict_set_size: 
-#          break;
+    with open('../data/test.tsv', 'rb') as csvfile:
+      datareader = csv.reader(csvfile, delimiter='	', quotechar='"')
+      for index,row in enumerate(datareader):
+        if index == predict_set_size: 
+          break;
+        if index<train_set_size : 
+          #feature extractor
+          test_set[0][index] = build_feature(row, top_word_list);
 
     train_set = tuple(train_set);
     valid_set = tuple(valid_set);
