@@ -13,6 +13,8 @@ import theano.tensor as T
 
 import collections, re
 
+feature_size = 0
+
 def find_ngrams(input_list, n):
     return zip(*[input_list[i:] for i in range(n)])
 
@@ -59,9 +61,9 @@ def nlp_prepare(dataset):
     train_set_size = 6000;
     valid_set_size = 1000;
     test_set_size = 369;
-    predict_set_size = 2800;
+    predict_set_size = 100;
 
-    debug = "true";
+    debug = "false";
     if debug == "true":
       train_set_size = 1000;
       valid_set_size = 200;
@@ -76,7 +78,6 @@ def nlp_prepare(dataset):
     with open('../data/train.tsv', 'rb') as csvfile:
       datareader = csv.reader(csvfile, delimiter='	', quotechar='"')
       for index,row in enumerate(datareader):
-        bagsofwords = [];
         for i in (0,2,3):
           for word in re.findall(r'\w+', row[i]):
             words_in_doc[word]= words_in_doc.get(word,0) + 1;
@@ -84,13 +85,17 @@ def nlp_prepare(dataset):
     with open('../data/test.tsv', 'rb') as csvfile:
       datareader = csv.reader(csvfile, delimiter='	', quotechar='"')
       for index,row in enumerate(datareader):
-        bagsofwords = [];
         for i in (0,2,3):
           for word in re.findall(r'\w+', row[i]):
             words_in_doc[word]= words_in_doc.get(word,0) + 1;
 
     #make sure word appearency is more than once.
     top_word_list = [word for word in words_in_doc if words_in_doc[word]>10];
+
+    #word indexing
+    word2int = {};
+    for index,word in enumerate(top_word_list):
+        word2int[word] = index;
 
     word_feature_size = len(top_word_list)*3;
     float_feature_size = 26;
@@ -108,7 +113,46 @@ def nlp_prepare(dataset):
     predict_set.append(numpy.ndarray(shape=(predict_set_size), dtype=int));
 
     def build_feature(row, top_word_list):
-      res = [i for i in xrange(feature_size)];
+      res = numpy.ndarray(shape=(feature_size), dtype=theano.config.floatX);
+      
+      for i in xrange(feature_size):
+        res[i] = 0;
+
+      URL=0;
+      CONTENT=2;
+      CATEGORY=3;
+
+      #feature from url
+      feature_shift = 0;
+      words_count = {};
+      for word in re.findall(r'\w+', row[URL]):
+        words_count[word]= words_count.get(word,0) + 1;
+
+      for word in words_count:
+        res[word2int.get(word,0)] = words_count[word];
+
+      #feature from content 
+      feature_shift += len(top_word_list);
+      words_count = {};
+      for word in re.findall(r'\w+', row[CONTENT]):
+        words_count[word]= words_count.get(word,0) + 1;
+
+      for word in words_count:
+        res[word2int.get(word,0)+feature_shift] = words_count[word];
+
+      #feature from category 
+      feature_shift += len(top_word_list);
+      words_count = {};
+      for word in re.findall(r'\w+', row[CATEGORY]):
+        words_count[word]= words_count.get(word,0) + 1;
+
+      for word in words_count:
+        res[word2int.get(word,0)+feature_shift] = words_count[word];
+
+      #feature from float points
+      feature_shift += len(top_word_list);
+
+
       return res;
 
     #load data from kaggle test set
@@ -143,7 +187,7 @@ def nlp_prepare(dataset):
           break;
         if index<train_set_size : 
           #feature extractor
-          test_set[0][index] = build_feature(row, top_word_list);
+          predict_set[0][index] = build_feature(row, top_word_list);
 
     train_set = tuple(train_set);
     valid_set = tuple(valid_set);
@@ -152,6 +196,8 @@ def nlp_prepare(dataset):
 
     data = (train_set, valid_set, test_set, predict_set); 
 
+    print "cPickle dumpping...";
+#    file = open(dataset, 'wb')
     file = gzip.GzipFile(dataset, 'wb')
     file.write(cPickle.dumps(data, 1))
     file.close()

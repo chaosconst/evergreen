@@ -44,6 +44,7 @@ import csv
 import string
 
 import numpy
+import nlp_prepare
 
 import theano
 import theano.tensor as T
@@ -257,7 +258,7 @@ def sgd_optimization_mnist(learning_rate=0.13, n_epochs=1000,
 
     # construct the logistic regression class
     # Each MNIST image has size 28*28
-    classifier = LogisticRegression(input=x, n_in=28 * 28, n_out=2)
+    classifier = LogisticRegression(input=x, n_in=71030, n_out=2)
 
     # the cost we minimize during training is the negative log likelihood of
     # the model in symbolic format
