@@ -35,6 +35,8 @@ def main():
 
   X_all = traindata + testdata
   lentrain = len(traindata)
+  print "x_test len:" + str(len(testdata))
+  print testdata[0] 
 
   print "fitting pipeline"
   tfv.fit(X_all)
@@ -49,10 +51,16 @@ def main():
   print "training on full data"
   rd.fit(X,y)
   pred = rd.predict_proba(X_test)[:,1]
+  print "pred len:" + str(len(pred))
   testfile = p.read_csv('../data/test.tsv', sep="\t", na_values=['?'], index_col=1)
   pred_df = p.DataFrame(pred, index=testfile.index, columns=['label'])
   pred_df.to_csv('benchmark.csv')
   print "submission file created.."
+
+  f = open("predict_res","w+");
+  for pred_item in pred:
+    f.write(str(pred_item)+'\n');
+  f.close();
 
 if __name__=="__main__":
   main()
