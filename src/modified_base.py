@@ -9,7 +9,7 @@ from sklearn import metrics,preprocessing,cross_validation
 from sklearn.feature_extraction.text import TfidfVectorizer
 import sklearn.linear_model as lm
 import pandas as p
-
+from scipy.sparse import csr_matrix, coo_matrix, vstack, hstack
 
 def main():
 
@@ -33,15 +33,28 @@ def main():
                              C=1, fit_intercept=True, intercept_scaling=1.0, 
                              class_weight=None, random_state=None)
 
-  X_all = traindata + testdata
-  lentrain = len(traindata)
-  print "x_test len:" + str(len(testdata))
-  print testdata[0] 
+#  X_all_url = traindata_url + testdata_url
+#  print "fitting url pipeline"
+#  tfv.fit(X_all_url)
+#  print "transforming url data"
+#  X_all_url = tfv.transform(X_all_url)
+#
+#  X_all_content = traindata_content + testdata_content
+#  print "fitting content pipeline"
+#  tfv.fit(X_all_content)
+#  print "transforming content data"
+#  X_all_content = tfv.transform(X_all_content)
 
-  print "fitting pipeline"
-  tfv.fit(X_all)
-  print "transforming data"
-  X_all = tfv.transform(X_all)
+  X_all_combine = traindata + testdata
+  print "fitting combine pipeline"
+  tfv.fit(X_all_combine)
+  print "transforming combine data"
+  X_all_combine = tfv.transform(X_all_combine)
+
+  lentrain = len(traindata_url)
+
+#  X_all = csr_matrix(hstack([X_all_url,X_all_content,X_all_combine])); 
+  X_all = csr_matrix(hstack([X_all_combine])); 
 
   X = X_all[:lentrain]
   X_test = X_all[lentrain:]
